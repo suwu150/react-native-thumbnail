@@ -44,7 +44,7 @@ public class RNThumbnailModule extends ReactContextBaseJavaModule {
     retriever.setDataSource(filePath);
     Bitmap image = retriever.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
 
-    String fullPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/thumb";
+    String fullPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath() + "/thumb";
 
     try {
       File dir = new File(fullPath);
