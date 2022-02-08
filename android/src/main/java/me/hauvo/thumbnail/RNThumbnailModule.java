@@ -9,6 +9,7 @@ import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.WritableMap;
 import android.media.ThumbnailUtils;
+import android.net.Uri;
 import android.provider.MediaStore;
 import android.provider.MediaStore.Video.Thumbnails;
 import android.graphics.Bitmap;
@@ -16,7 +17,11 @@ import android.os.Environment;
 import android.util.Log;
 import android.media.MediaMetadataRetriever;
 import 	android.graphics.Matrix;
+import android.webkit.URLUtil;
 
+import java.io.FileInputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.UUID;
 import java.io.File;
 import java.io.OutputStream;
@@ -39,12 +44,37 @@ public class RNThumbnailModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void get(String filePath, Promise promise) {
-    filePath = filePath.replace("file://","");
+    Log.e("filePath", filePath);
     MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-    retriever.setDataSource(filePath);
-    Bitmap image = retriever.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+    if (filePath == null || filePath.isEmpty()) {
+      Log.d("RNThumbnailModule", "getRetrieverThumbnail filePath is invalid");
+      if (promise != null) {
+        promise.reject("E_RNThumnail_ERROR", "filePath is invalid");
+      }
+      return;
+    }
+    if (URLUtil.isFileUrl(filePath)) {
+      String decodedPath;
+      try {
+        decodedPath = URLDecoder.decode(filePath, "UTF-8");
+      } catch (UnsupportedEncodingException e) {
+        decodedPath = filePath;
+      }
+      Log.d("RNThumbnailModule", "getRetrieverThumbnail decodedPath:" + decodedPath);
+      retriever.setDataSource(decodedPath.replace("file://", ""));
+    } else if (filePath.startsWith("content://")) {
+      Uri retrieverUri = Uri.parse(filePath);
+      Log.d("RNThumbnailModule", "getRetrieverThumbnail retrieverUri:" + retrieverUri);
+      try {
+        retriever.setDataSource(this.reactContext.getBaseContext(), retrieverUri);
+      } catch (RuntimeException e) {
+        Log.d("RNThumbnailModule", "getRetrieverThumbnail RuntimeException e:" + e.getMessage());
+      }
+    }
 
+    Bitmap image = retriever.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
     String fullPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath() + "/thumb";
+    retriever.release();
 
     try {
       File dir = new File(fullPath);
